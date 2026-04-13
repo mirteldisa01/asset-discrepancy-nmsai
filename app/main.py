@@ -23,7 +23,7 @@ from app.utils import process_result, draw_boxes
 
 app = FastAPI(
     title="Asset Discrepancy Detection API",
-    version="2.0.0"
+    version="1.2.0"
 )
 
 # ================= CONFIG =================
