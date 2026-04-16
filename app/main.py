@@ -85,7 +85,6 @@ def process_video(url: str):
     start_time = time.time()
     found_any = False
 
-    # ===== ADDITION: store last frame =====
     last_frame = None
 
     try:
@@ -102,8 +101,6 @@ def process_video(url: str):
                 break
 
             frame_count += 1
-
-            # ===== ADDITION: keep last frame =====
             last_frame = frame.copy()
 
             ms = cap.get(cv2.CAP_PROP_POS_MSEC)
@@ -152,16 +149,14 @@ def process_video(url: str):
         for k, v in data["counts"].items():
             final_counts[k] = final_counts.get(k, 0) + v
 
-    # ===== ADDITION ONLY: fallback when no detection =====
     if not found_any and last_frame is not None:
         fallback_frame = last_frame.copy()
 
-        # Draw "CLEAR" text at TOP RIGHT (green)
         text = "CLEAR"
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 1.2
         thickness = 3
-        color = (0, 255, 0)  # Green (BGR)
+        color = (0, 255, 0)
 
         (text_w, text_h), _ = cv2.getTextSize(text, font, font_scale, thickness)
 
@@ -217,8 +212,29 @@ def detect_url(data: URLRequest):
         raise HTTPException(status_code=400, detail="URL required")
 
     try:
+        url = data.file_url.lower()
+
+        # ================= NEW: WEBM HANDLING =================
+        if url.endswith(".webm"):
+            cap = cv2.VideoCapture(data.file_url, cv2.CAP_FFMPEG)
+            ret, frame = cap.read()
+            cap.release()
+
+            if not ret:
+                raise HTTPException(status_code=400, detail="Cannot read webm URL")
+
+            detections, counts, image_base64 = process_image(frame)
+
+            return {
+                "type": "webm_frame",
+                "total_objects": sum(counts.values()),
+                "counts": counts,
+                "detections": detections,
+                "image_base64": image_base64
+            }
+
         # image
-        if data.file_url.lower().endswith((".jpg", ".jpeg", ".png")):
+        if url.endswith((".jpg", ".jpeg", ".png")):
             cap = cv2.VideoCapture(data.file_url)
             ret, frame = cap.read()
             cap.release()
